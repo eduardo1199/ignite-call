@@ -4,6 +4,7 @@ import { Heading, Text } from '@ignite-ui/react'
 import Image from 'next/image'
 
 import previewImage from 'assets/calendar.png'
+import { ClaimUsernameForm } from './components/ClaimUsernameForm'
 
 const Home: NextPage = () => {
   return (
@@ -14,6 +15,8 @@ const Home: NextPage = () => {
           Conecte seu calendário e permita que as pessoas marquem agendamentos
           no seu tempo livre.
         </Text>
+
+        <ClaimUsernameForm />
       </Hero>
 
       <Preview>
