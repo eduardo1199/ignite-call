@@ -37,4 +37,4 @@ yarn-error.log*
 
 #db
 
-./prisma/dev.db
+prisma/dev.db
