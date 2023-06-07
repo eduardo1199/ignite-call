@@ -6,9 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint -- --fix",
+    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "migrate": "prisma migrate dev --name",
-    "studio": "prisma studio"
+    "studio": "prisma studio",
+    "prepare": "husky install"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.1.0",
@@ -16,6 +17,7 @@
     "@prisma/client": "^4.14.1",
     "axios": "^1.4.0",
     "next": "13.3.4",
+    "next-auth": "^4.22.1",
     "nookies": "^2.5.2",
     "phosphor-react": "^1.4.1",
     "react": "18.2.0",
@@ -24,6 +26,8 @@
     "zod": "^3.21.4"
   },
   "devDependencies": {
+    "@commitlint/cli": "^17.6.5",
+    "@commitlint/config-conventional": "^17.6.5",
     "@rocketseat/eslint-config": "^1.2.0",
     "@types/cookie": "^0.5.1",
     "@types/node": "18.16.3",
@@ -31,6 +35,7 @@
     "@types/react-dom": "18.2.1",
     "eslint": "8.39.0",
     "eslint-config-next": "13.3.4",
+    "husky": "^8.0.0",
     "prisma": "^4.14.1",
     "typescript": "5.0.4"
   }
