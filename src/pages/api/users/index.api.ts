@@ -20,9 +20,12 @@ export default async function handler(
   })
 
   if (userExists) {
-    return res.status(400).json({
-      message: 'User already exists!',
+    setCookie({ res }, '@ignitecall:userId', userExists.id, {
+      maxAge: 60 * 60 * 24 * 7, // 7 dias
+      path: '/',
     })
+
+    return res.status(201).redirect('/register/connect-calendar')
   }
 
   const user = await prisma.user.create({
