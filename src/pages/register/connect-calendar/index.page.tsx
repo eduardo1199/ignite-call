@@ -4,6 +4,7 @@ import { ArrowRight, Check } from 'phosphor-react'
 import { AuthError, ConnectBox, ConnectItem } from './styles'
 import { signIn, useSession } from 'next-auth/react'
 import { useRouter } from 'next/router'
+import { FormEvent } from 'react'
 
 export default function ConnectCalendar() {
   const session = useSession()
@@ -14,6 +15,12 @@ export default function ConnectCalendar() {
 
   async function handleConnectCalendar() {
     await signIn('google')
+  }
+
+  function handleNavigatorSubmit(e: FormEvent) {
+    e.preventDefault()
+
+    router.push('/register/time-intervals')
   }
 
   return (
@@ -27,7 +34,7 @@ export default function ConnectCalendar() {
 
         <MultiStep size={4} currentStep={2} />
 
-        <ConnectBox>
+        <ConnectBox as="form" onSubmit={handleNavigatorSubmit}>
           <ConnectItem>
             <Text>Google Calendar</Text>
             {isSignedIn ? (
