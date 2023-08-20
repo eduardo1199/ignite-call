@@ -1,8 +1,40 @@
-# Anotações
+# Ignite-Call
 
 ## Projeto voltado a integração do google agenda para verificação de disponibilidade de tempo. Utilizando ReactJS, TypeScript, NextJS, Designer System.
 
 ## Basicamente o usuário faz authenticação oauth no sistema, utilizando o google e habilitando as permissões para acesso a API de calendário da sua conta do google. Dessa forma, o usuário é capaz de marcar as disponibilidades de tempo para os dias selecionados.
+
+## Start Project
+
+required nodejs > 12 version.
+
+install dependencias
+
+<aside>
+💡 npm install
+
+</aside>
+
+start project
+
+<aside>
+💡 npm run dev
+
+</aside>
+
+start studio view 
+
+<aside>
+💡 npm run studio
+
+</aside>
+
+build
+
+<aside>
+💡 npm run build
+
+</aside>
 
 ## Layouts
 
