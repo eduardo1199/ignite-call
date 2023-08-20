@@ -120,6 +120,89 @@ type TimeIntervalsFormInput = z.input<typeof timeIntervalsFormSchema>
 type TimeIntervalsFormOutOutput = z.output<typeof timeIntervalsFormSchema>
 ```
 
+## Rotas autenticadas no next
+
+Caso você precise capturar os dados da sessão do usuário logado em uma API, seja para cadastrar uma informação ou buscar, você pode aplicar um método getServerSession dentro do server side, passando o request, response e os authOptions.
+
+```
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  if (req.method !== 'POST') {
+    return res.status(405).end()
+  }
+
+  const session = await getServerSession(
+    req,
+    res,
+    buildNextAuthOptions(req, res),
+  )
+
+  return res.json({
+    session,
+  })
+}
+```
+
+## Criação de dias de disponibilidade
+
+Nesse tópico é introduzido a criação no banco dos horários disponíveis do usuário durante a semana. Para isso foi necessário ciar uma nova tabela no prisma studio, com o seguinte model.
+
+```
+model UserTimeInterval {
+  id                    String @id @default(uuid())
+  week_day              Int
+  time_start_in_minutes Int
+  time_end_in_minutes   Int
+
+  user    User   @relation(fields: [user_id], references: [id])
+  user_id String
+
+  @@map("user_time_interval")
+}
+```
+
+Em seguida, capturando os dados do body para cadastro de cada dia selecionado pelo usuário. Infelizmente não é possível no sqLite realizar um createMany para cadastro dos dias dentro de array, para isso usamos o método Promise.All.
+
+```
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  if (req.method !== 'POST') {
+    return res.status(405).end()
+  }
+
+  const session = await getServerSession(
+    req,
+    res,
+    buildNextAuthOptions(req, res),
+  )
+
+  if (!session) {
+    return res.status(401).end()
+  }
+
+  const { intervals } = requestBodySchema.parse(req.body)
+
+  await Promise.all(
+    intervals.map((interval) => {
+      return prisma.userTimeInterval.create({
+        data: {
+          time_end_in_minutes: interval.startTimeInMinutes,
+          time_start_in_minutes: interval.endTimeInMinute,
+          week_day: interval.weekDay,
+          user_id: session.user?.id,
+        },
+      })
+    }),
+  )
+
+  return res.status(201).end()
+}
+```
+
 ## Depedências
 
 - React Hook Form
