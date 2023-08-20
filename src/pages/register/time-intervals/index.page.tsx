@@ -20,6 +20,8 @@ import { ArrowRight } from 'phosphor-react'
 import { z } from 'zod'
 import { getWeekDays } from 'utils/get-week-days'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { convertTimeToMinutes } from 'utils/converter-time-string-to-minutes'
+import { api } from 'lib/axios'
 
 const timeIntervalsFormSchema = z.object({
   intervals: z
@@ -35,10 +37,32 @@ const timeIntervalsFormSchema = z.object({
     .transform((intervals) => intervals.filter((interval) => interval.enabled))
     .refine((intervals) => intervals.length > 0, {
       message: 'Você precisa selecionar pelo menos 1 dia da semana!',
-    }),
+    })
+    .transform((intervals) =>
+      intervals.map((interval) => {
+        return {
+          weekDay: interval.weekDay,
+          startTimeInMinutes: convertTimeToMinutes(interval.startTime),
+          endTimeInMinute: convertTimeToMinutes(interval.endTime),
+        }
+      }),
+    )
+    .refine(
+      (intervals) => {
+        return intervals.every(
+          (interval) =>
+            interval.endTimeInMinute - 60 >= interval.startTimeInMinutes,
+        )
+      },
+      {
+        message:
+          'O horário de término deve ser pelo menos 1h distante do inicio.',
+      },
+    ),
 })
-/* 
-type TimeIntervalsFormSchema = z.infer<typeof timeIntervalsFormSchema> */
+
+type TimeIntervalsFormInput = z.input<typeof timeIntervalsFormSchema>
+type TimeIntervalsFormOutOutput = z.output<typeof timeIntervalsFormSchema>
 
 export default function TimeIntervals() {
   const {
@@ -47,7 +71,7 @@ export default function TimeIntervals() {
     control,
     watch,
     formState: { isSubmitting, errors },
-  } = useForm({
+  } = useForm<TimeIntervalsFormInput>({
     resolver: zodResolver(timeIntervalsFormSchema),
     defaultValues: {
       intervals: [
@@ -69,7 +93,13 @@ export default function TimeIntervals() {
 
   const weekDays = getWeekDays()
 
-  async function handleSetTimeIntervals() {}
+  async function handleSetTimeIntervals(data: any) {
+    const { intervals } = data as TimeIntervalsFormOutOutput
+
+    await api.post('/users/time-intervals', {
+      intervals,
+    })
+  }
 
   const intervals = watch('intervals')
 

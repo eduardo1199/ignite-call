@@ -1,83 +1,215 @@
-# ![WebApp](https://iharsh234.github.io/WebApp/images/demo/demo_landing.JPG)
-# WebApp
-<table>
-<tr>
-<td>
-  A webapp using Quandl API to display history of stock growth in a given period of time. It helps predict the growth of stocks from the  charts of stock performace in any period of time. It helps to judge stocks, with the principle of momentum investing, which returns 1% per month on average.
-</td>
-</tr>
-</table>
+# Anotações
 
+## Projeto voltado a integração do google agenda para verificação de disponibilidade de tempo. Utilizando ReactJS, TypeScript, NextJS, Designer System.
 
-## Demo
-Here is a working live demo :  https://iharsh234.github.io/WebApp/
+## Basicamente o usuário faz authenticação oauth no sistema, utilizando o google e habilitando as permissões para acesso a API de calendário da sua conta do google. Dessa forma, o usuário é capaz de marcar as disponibilidades de tempo para os dias selecionados.
 
+## Layouts
 
-## Site
+## Package
 
-### Landing Page
-Currently it is working on all NSE (India) Stocks, BSE (India) Stocks Symbol will be added soon.
+## Aula de formulário de disponibilidade:
 
-![](https://iharsh234.github.io/WebApp/images/demo/web_app_face.JPG)
+- utilizandando useFieldArray para criar formulários onde um campo field é um array de objetos, onde cada objeto será um valor de input.
+- A motivação é proporcionar melhor experiência e desempenho ao usuário
+- documentação: [https://www.react-hook-form.com/api/usefieldarray/](https://www.react-hook-form.com/api/usefieldarray/)
 
-### Query Filled Form
-![](https://iharsh234.github.io/WebApp/images/demo/demo_query.JPG)
+## CheckBox de controle
 
-### Charts
-![](https://iharsh234.github.io/WebApp/images/demo/demo_chart1.JPG)
-![](https://iharsh234.github.io/WebApp/images/demo/demo_chart2.JPG)
-![](https://iharsh234.github.io/WebApp/images/demo/demo_chart3.JPG)
+Aqui a abordagem dessa aula é utilizar control input devido ao fato de que um checkbox não é um input nativo do HTML, ou seja, para campos em que não são nativos, você precisa adicionar um control input.
 
+Documentação: [https://www.react-hook-form.com/api/useform/control/](https://www.react-hook-form.com/api/useform/control/)
 
-## Mobile support
-The WebApp is compatible with devices of all sizes and all OS's, and consistent improvements are being made.
+<aside>
+💡 Controller é um componente do react hook form para controlar input que não são nativos.
 
-![](https://iharsh234.github.io/WebApp/images/demo/mobile.png)
+</aside>
 
+```
+<Controller
+  name={`intervals.${index}.enabled`}
+  control={control}
+  render={({ field }) => (
+    <Checkbox
+      onCheckedChange={(checked) => {
+        field.onChange(checked === true)
+      }}
+      checked={field.value}
+    />
+  )}
+/>
+```
 
+## Validação e controle com zod
 
+Aqui nessa aula integramos o react hook form com a biblioteca zod para trata de dados de erros e validações no nosso formulário. importando z , podemos inferir um objeto ou array de manipulação de saída.
 
-## [Usage](https://iharsh234.github.io/WebApp/) 
+<aside>
+💡 Aqui o campo intervals é um array de objetos, nesse caso usamos o código abaixo para tratar como deveria ser a saída no nosso formulário após a validação.
 
-### Development
-Want to contribute? Great!
+transform transforma os dados de input para saída.
+refine ele retorna true ou false para definar o que tem que ser obrigatório dentro dessa tratativada.
 
-To fix a bug or enhance an existing module, follow these steps:
+</aside>
 
-- Fork the repo
-- Create a new branch (`git checkout -b improve-feature`)
-- Make the appropriate changes in the files
-- Add changes to reflect the changes made
-- Commit your changes (`git commit -am 'Improve feature'`)
-- Push to the branch (`git push origin improve-feature`)
-- Create a Pull Request 
+```
+const timeIntervalsFormSchema = z.object({
+  intervals: z
+    .array(
+      z.object({
+        weekDay: z.number().min(0).max(6),
+        enabled: z.boolean(),
+        startTime: z.string(),
+        endTime: z.string(),
+      }),
+    )
+    .length(7)
+    .transform((intervals) => intervals.filter((interval) => interval.enabled))
+    .refine((intervals) => intervals.length > 0, {
+      message: 'Você precisa selecionar pelo menos 1 dia da semana!',
+    }),
+})
+```
 
-### Bug / Feature Request
+## Input e Output com zod
 
-If you find a bug (the website couldn't handle the query and / or gave undesired results), kindly open an issue [here](https://github.com/iharsh234/WebApp/issues/new) by including your search query and the expected result.
+Mais uma transformação com zod de entrada e saída de dados. O segundo método transform vai aplicar uma transformação no formato dos dados após a aplicação de um refine. Basicamente converter os startTime e endTime para minutos.
 
-If you'd like to request a new function, feel free to do so by opening an issue [here](https://github.com/iharsh234/WebApp/issues/new). Please include sample queries and their corresponding results.
+Em seguida aplica-se um outro refine para validação, verificando se existe algum endTime menor do que o startTime de entrada. Dessa forma. Para integração com typescript, podemos aplicar um  z.input ou z.output para pegar as typagens de entrada e saída usando zod.
 
+```
+const timeIntervalsFormSchema = z.object({
+  intervals: z
+    .array(
+      z.object({
+        weekDay: z.number().min(0).max(6),
+        enabled: z.boolean(),
+        startTime: z.string(),
+        endTime: z.string(),
+      }),
+    )
+    .length(7)
+    .transform((intervals) => intervals.filter((interval) => interval.enabled))
+    .refine((intervals) => intervals.length > 0, {
+      message: 'Você precisa selecionar pelo menos 1 dia da semana!',
+    })
+    .transform((intervals) =>
+      intervals.map((interval) => {
+        return {
+          weekDay: interval.weekDay,
+          startTimeInMinutes: convertTimeToMinutes(interval.startTime),
+          endTimeInMinute: convertTimeToMinutes(interval.endTime),
+        }
+      }),
+    )
+    .refine(
+      (intervals) => {
+        return intervals.every(
+          (interval) =>
+            interval.endTimeInMinute - 60 >= interval.startTimeInMinutes,
+        )
+      },
+      {
+        message:
+          'O horário de término deve ser pelo menos 1h distante do inicio.',
+      },
+    ),
+})
 
-## Built with 
+type TimeIntervalsFormInput = z.input<typeof timeIntervalsFormSchema>
+type TimeIntervalsFormOutOutput = z.output<typeof timeIntervalsFormSchema>
+```
 
-- [jQuery - Ajax](http://www.w3schools.com/jquery/jquery_ref_ajax.asp) - jQuery simplifies HTML document traversing, event handling, animating, and Ajax interactions for rapid web development.
-- [Google Chart API](https://developers.google.com/chart/interactive/docs/quick_start) - Free , Rich Gallery , Customizable and Cross-browser compatible.
-- [Bootstrap](http://getbootstrap.com/) - Extensive list of components and  Bundled Javascript plugins.
+## Rotas autenticadas no next
 
+Caso você precise capturar os dados da sessão do usuário logado em uma API, seja para cadastrar uma informação ou buscar, você pode aplicar um método getServerSession dentro do server side, passando o request, response e os authOptions.
 
-## To-do
-- Add BSE (India) Symbol to the current App.
-- Decide comparison models of Stocks. (suggestions are most welcome).
-- Another WebApp, capable of comparing at least 10 stocks.
+```
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  if (req.method !== 'POST') {
+    return res.status(405).end()
+  }
 
-## Team
+  const session = await getServerSession(
+    req,
+    res,
+    buildNextAuthOptions(req, res),
+  )
 
-[![Harsh Vijay](https://avatars1.githubusercontent.com/u/12688534?v=3&s=144)](https://github.com/iharsh234)  | [![Quandl.com](https://github.com/iharsh234/WebApp/blob/master/images/quandl.jpg)](https://www.quandl.com/)
----|---
-[Harsh Vijay ](https://github.com/iharsh234) |[Quandl](https://www.quandl.com)
+  return res.json({
+    session,
+  })
+}
+```
 
-## [License](https://github.com/iharsh234/WebApp/blob/master/LICENSE.md)
+## Criação de dias de disponibilidade
 
-MIT © [Harsh Vijay ](https://github.com/iharsh234)
+Nesse tópico é introduzido a criação no banco dos horários disponíveis do usuário durante a semana. Para isso foi necessário ciar uma nova tabela no prisma studio, com o seguinte model.
 
+```
+model UserTimeInterval {
+  id                    String @id @default(uuid())
+  week_day              Int
+  time_start_in_minutes Int
+  time_end_in_minutes   Int
+
+  user    User   @relation(fields: [user_id], references: [id])
+  user_id String
+
+  @@map("user_time_interval")
+}
+```
+
+Em seguida, capturando os dados do body para cadastro de cada dia selecionado pelo usuário. Infelizmente não é possível no sqLite realizar um createMany para cadastro dos dias dentro de array, para isso usamos o método Promise.All.
+
+```
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  if (req.method !== 'POST') {
+    return res.status(405).end()
+  }
+
+  const session = await getServerSession(
+    req,
+    res,
+    buildNextAuthOptions(req, res),
+  )
+
+  if (!session) {
+    return res.status(401).end()
+  }
+
+  const { intervals } = requestBodySchema.parse(req.body)
+
+  await Promise.all(
+    intervals.map((interval) => {
+      return prisma.userTimeInterval.create({
+        data: {
+          time_end_in_minutes: interval.startTimeInMinutes,
+          time_start_in_minutes: interval.endTimeInMinute,
+          week_day: interval.weekDay,
+          user_id: session.user?.id,
+        },
+      })
+    }),
+  )
+
+  return res.status(201).end()
+}
+```
+
+## Depedências
+
+- React Hook Form
+- ReactJS
+- NextJS e Next Auth
+- Zod
+- Prisma
+- Nookies
+- Phosphor-react
+- Axios
