@@ -235,6 +235,34 @@ export default async function handler(
 }
 ```
 
+## Página de atualizar perfil
+
+Para esse tópico usamos o useSession do next para capturar informações do usuário authenticado no sistema. Porém, em um primeiro momento, os dados da sessão do usuário aparecem undefined e em seguida preenchidos. Isso é devido ao fato que o contexto do provider envia para páginas as propriedades da sessão, mas com elas undefined, porque é necessário realizar uma busca de dados para obter as informações do usuário authenticado. 
+
+Dessa forma, adicionamos um getServerSideProps para a página, capturando de dentro de req e res, usando o método getServerSession do lado do server side os dados do usuário e em seguido enviando através das propriedades para página. Tudo isso, implica que no console.log os dados já estiverem carregados em um primeiro momento. 
+
+```
+export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
+  const session = await getServerSession(
+    req,
+    res,
+    buildNextAuthOptions(req, res),
+  )
+
+  return {
+    props: {
+      session,
+    },
+  }
+}
+```
+
+```
+const session = useSession()
+
+  console.log(session)
+```
+
 ## Depedências
 
 - React Hook Form
