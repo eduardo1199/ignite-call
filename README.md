@@ -263,6 +263,73 @@ const session = useSession()
   console.log(session)
 ```
 
+## Página de agendamento
+
+Para criação dessa página inicialmente, escrevemos um método getStaticProps que é o método de pré-renderização que gera o HTML no **momento da construção** . O HTML pré-renderizado é então *reutilizado* em cada solicitação.
+
+### Quando usar [geração estática](https://nextjs.org/docs/basic-features/pages#static-generation-recommended) versus [renderização no lado do servidor](https://nextjs.org/docs/basic-features/pages#server-side-rendering)
+
+Recomendamos usar **[a Geração Estática](https://nextjs.org/docs/basic-features/pages#static-generation-recommended)** (com e sem dados) sempre que possível porque sua página pode ser construída uma vez e servida por CDN, o que a torna muito mais rápida do que ter um servidor renderizando a página em cada solicitação.
+
+Você pode usar [a geração estática](https://nextjs.org/docs/basic-features/pages#static-generation-recommended) para muitos tipos de páginas, incluindo:
+
+- Páginas de marketing
+- Postagens no blog
+- Listagens de produtos de comércio eletrônico
+- Ajuda e documentação
+
+Você deve se perguntar: "Posso pré-renderizar esta página **antes** da solicitação do usuário?" Se a resposta for sim, você deve escolher [Geração Estática](https://nextjs.org/docs/basic-features/pages#static-generation-recommended) .
+
+Por outro lado, [a geração estática](https://nextjs.org/docs/basic-features/pages#static-generation-recommended) **não** é uma boa ideia se você não puder pré-renderizar uma página antes da solicitação do usuário. Talvez sua página mostre dados atualizados com frequência e o conteúdo da página mude a cada solicitação.
+
+Nesse caso, você pode usar **[a renderização do lado do servidor](https://nextjs.org/docs/basic-features/pages#server-side-rendering)** . Será mais lento, mas a página pré-renderizada estará sempre atualizada. Ou você pode pular a pré-renderização e usar JavaScript do lado do cliente para preencher dados atualizados com frequência.
+
+Nessa abordagem usamos getStaticProps com dados, fazendo uma solicitação ao banco de dados para gerar dados para nossa página estática.
+
+```
+export const getStaticProps: GetStaticProps = async ({ params }) => {
+  const username = String(params?.username)
+
+  const user = await prisma.user.findUnique({ where: { username } })
+
+  if (!user) {
+    return {
+      notFound: true,
+    }
+  }
+
+  return {
+    props: {
+      user: {
+        name: user.username,
+        bio: user.bio,
+        avatarUrl: user.avatar_url,
+      },
+    },
+    revalidate: 60 * 60 * 24, // 1day
+  }
+}
+```
+
+Nesse caso, temos uma revalidação de 1 dia, ou seja, para cada dia o next executará novamente essa página renovando os dados pre processados do nosso banco de dados. 
+
+Porém, note que nossa funçaõ getStaticProps usa um parametro dinâmico vindo da URL. Se uma página possui [Rotas Dinâmicas](https://nextjs.org/docs/pages/building-your-application/routing/dynamic-routes) e usa `getStaticProps`, ela precisa definir uma lista de caminhos a serem gerados estaticamente.
+
+Quando você exporta uma função chamada `getStaticPaths`(Geração de site estático) de uma página que usa rotas dinâmicas, Next.js pré-renderizará estaticamente todos os caminhos especificados por `getStaticPaths`.
+
+A `[getStaticPaths`referência da API](https://nextjs.org/docs/pages/api-reference/functions/get-static-paths) abrange todos os parâmetros e adereços que podem ser usados com o `getStaticPaths`.
+
+```
+export const getStaticPaths: GetStaticPaths = async () => {
+  return {
+    paths: [],
+    fallback: 'blocking',
+  }
+}
+```
+
+Para esse caso, para paths vazio, temos que todas as páginas serão geradas durante a construção no processo de build. fallback: ‘Blocking’  é chamada antes da renderização da página. Para esse caso é útil quando temos muitas páginas estáticas que requerem dados vindo dos parametros. 
+
 ## Depedências
 
 - React Hook Form
