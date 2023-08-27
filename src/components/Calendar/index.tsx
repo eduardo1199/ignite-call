@@ -18,16 +18,16 @@ export function Calendar() {
         <CalendarTitle>
           Dezembro <span>2022</span>
         </CalendarTitle>
-      </CalendarHeader>
 
-      <CalendarActions>
-        <button>
-          <CaretLeft />
-        </button>
-        <button>
-          <CaretRight />
-        </button>
-      </CalendarActions>
+        <CalendarActions>
+          <button>
+            <CaretLeft />
+          </button>
+          <button>
+            <CaretRight />
+          </button>
+        </CalendarActions>
+      </CalendarHeader>
 
       <CalendarBody>
         <thead>
@@ -35,25 +35,25 @@ export function Calendar() {
             {shortWeekDays.map((weekDay) => {
               return <th key={weekDay}>{weekDay}.</th>
             })}
-            <tbody>
-              <tr>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td>
-                  <CalendarDay>1</CalendarDay>
-                </td>
-                <td>
-                  <CalendarDay>2</CalendarDay>
-                </td>
-                <td>
-                  <CalendarDay>3</CalendarDay>
-                </td>
-              </tr>
-            </tbody>
           </tr>
         </thead>
+        <tbody>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td>
+              <CalendarDay>1</CalendarDay>
+            </td>
+            <td>
+              <CalendarDay>2</CalendarDay>
+            </td>
+            <td>
+              <CalendarDay>3</CalendarDay>
+            </td>
+          </tr>
+        </tbody>
       </CalendarBody>
     </CalendarContainer>
   )
