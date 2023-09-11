@@ -330,6 +330,57 @@ export const getStaticPaths: GetStaticPaths = async () => {
 
 Para esse caso, para paths vazio, temos que todas as páginas serão geradas durante a construção no processo de build. fallback: ‘Blocking’  é chamada antes da renderização da página. Para esse caso é útil quando temos muitas páginas estáticas que requerem dados vindo dos parametros. 
 
+## Navegando nos meses
+
+Para adicionar a funcionalidade de navegação do calendário para página de agendamento, tivemos que lidar com datas no javascript, criando um estado que vai armazenar essa data. Porém, para lidar com manipulação, tivemos que instalar a biblioteca dayjs para manipular a data.
+
+<aside>
+💡 A arrow function retorna o valor da data atual, passando em set o segundo parâmetro como sendo 1, porque sempre vamos lidar com o primeiro dia do mês.
+
+Em seguida, introduzimos duas funções que vão diminuir ou aumentar a data em 30 dias ou em um mês. 
+
+Em seguida, formatamos para exibir na página o valor do ano e mês correspondente.
+
+</aside>
+
+```
+const [currentDate, setCurrentDate] = useState(() => {
+    return dayjs().set('date', 1)
+  })
+
+  function handlePreviousMonth() {
+    const previousMonthDate = currentDate.subtract(1, 'month')
+
+    setCurrentDate(previousMonthDate)
+  }
+
+  function handleNextMonth() {
+    const nextMonthDate = currentDate.add(1, 'month')
+
+    setCurrentDate(nextMonthDate)
+  }
+
+  const shortWeekDays = getWeekDays({ short: true })
+
+  const currentMonth = currentDate.format('MMMM')
+  const currentYear = currentDate.format('YYYY')
+```
+
+Além disso, precisamos transformar a formatação para o linguagem portuguesa. 
+
+<aside>
+💡 Criamos um arquivo dayjs.ts e importamos na raiz do projeto, para sempre exportar a data no formato PT-BR
+
+</aside>
+
+```
+import dayjs from 'dayjs'
+
+import 'dayjs/locale/pt-br'
+
+dayjs.locale('pt-br')
+```
+
 ## Depedências
 
 - React Hook Form
