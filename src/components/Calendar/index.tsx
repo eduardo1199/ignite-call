@@ -11,7 +11,22 @@ import { getWeekDays } from 'utils/get-week-days'
 import { useMemo, useState } from 'react'
 import dayjs from 'dayjs'
 
-export function Calendar() {
+interface CalendarWeek {
+  week: number
+  days: Array<{
+    date: dayjs.Dayjs
+    disabled: boolean
+  }>
+}
+
+type CalendarWeeks = CalendarWeek[]
+
+interface CalendarProps {
+  selectedDate: Date | null
+  onDateSelected?: (date: Date) => void
+}
+
+export function Calendar({ selectedDate, onDateSelected }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(() => {
     return dayjs().set('date', 1)
   })
@@ -38,22 +53,61 @@ export function Calendar() {
       length: currentDate.daysInMonth(),
     }).map((_, i) => {
       return currentDate.set('date', i + 1)
-    })
+    }) // days in month
 
-    const firstWeekDay = currentDate.get('day')
+    const firstWeekDay = currentDate.get('day') // return first day in month
 
     const previousMonthsFillArray = Array.from({
       length: firstWeekDay,
-    })
+    }) // create array with length that days missing
       .map((_, i) => {
         return currentDate.subtract(i + 1, 'day')
-      })
-      .reverse()
+      }) // create array with values of days missing
+      .reverse() // reverse the array
 
-    return [...previousMonthsFillArray, ...daysInMonthArray]
+    const lastDayInCurrentMonth = currentDate.set(
+      'date',
+      currentDate.daysInMonth(),
+    ) // last day in month
+
+    const lastWeekDay = lastDayInCurrentMonth.get('day') // day the last week of the month
+
+    const nextMonthFillArray = Array.from({
+      length: 7 - (lastWeekDay + 1), // create array with length that days next days in next month
+    }).map((_, i) => {
+      return lastDayInCurrentMonth.add(i + 1, 'day') // create array with values of next days
+    })
+
+    const calendarDays = [
+      ...previousMonthsFillArray.map((date) => {
+        return { date, disabled: true }
+      }),
+      ...daysInMonthArray.map((date) => {
+        return { date, disabled: date.endOf('day').isBefore(new Date()) }
+      }),
+      ...nextMonthFillArray.map((date) => {
+        return { date, disabled: true }
+      }),
+    ] // array with total days in month
+
+    const calendarWeeks = calendarDays.reduce<CalendarWeeks>(
+      (weeks, _, i, original) => {
+        const isNewWeek = i % 7 === 0 // if start new week
+
+        if (isNewWeek) {
+          weeks.push({
+            week: i / 7 + 1,
+            days: original.slice(i, i + 7), // added day in week
+          })
+        }
+
+        return weeks
+      },
+      [],
+    )
+
+    return calendarWeeks
   }, [currentDate])
-
-  console.log(calendarWeeks)
 
   return (
     <CalendarContainer>
@@ -85,21 +139,26 @@ export function Calendar() {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td>
-              <CalendarDay>1</CalendarDay>
-            </td>
-            <td>
-              <CalendarDay>2</CalendarDay>
-            </td>
-            <td>
-              <CalendarDay>3</CalendarDay>
-            </td>
-          </tr>
+          {calendarWeeks.map(({ days, week }) => {
+            return (
+              <tr key={week}>
+                {days.map(({ date, disabled }) => {
+                  return (
+                    <td key={date.toString()}>
+                      <CalendarDay
+                        disabled={disabled}
+                        onClick={() =>
+                          onDateSelected && onDateSelected(date.toDate())
+                        }
+                      >
+                        {date.get('date')}
+                      </CalendarDay>
+                    </td>
+                  )
+                })}
+              </tr>
+            )
+          })}
         </tbody>
       </CalendarBody>
     </CalendarContainer>
