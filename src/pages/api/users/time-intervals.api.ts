@@ -39,8 +39,8 @@ export default async function handler(
     intervals.map((interval) => {
       return prisma.userTimeInterval.create({
         data: {
-          time_end_in_minutes: interval.startTimeInMinutes,
-          time_start_in_minutes: interval.endTimeInMinute,
+          time_end_in_minutes: interval.endTimeInMinute,
+          time_start_in_minutes: interval.startTimeInMinutes,
           week_day: interval.weekDay,
           user_id: session.user?.id,
         },
