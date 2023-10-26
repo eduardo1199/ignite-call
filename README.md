@@ -381,6 +381,168 @@ import 'dayjs/locale/pt-br'
 dayjs.locale('pt-br')
 ```
 
+## Dias do calendário
+
+Através de uma função usando useMemo, criamos uma lógica para capturar os dias dos mês anterior e os dias do mês posterior para montagem do calendário. Em seguida, tratamos o dado usando um slice para capturar os dias daquela semana.
+
+```
+const calendarWeeks = useMemo(() => {
+    const daysInMonthArray = Array.from({
+      length: currentDate.daysInMonth(),
+    }).map((_, i) => {
+      return currentDate.set('date', i + 1)
+    }) // days in month
+
+    const firstWeekDay = currentDate.get('day') // return first day in month
+
+    const previousMonthsFillArray = Array.from({
+      length: firstWeekDay,
+    }) // create array with length that days missing
+      .map((_, i) => {
+        return currentDate.subtract(i + 1, 'day')
+      }) // create array with values of days missing
+      .reverse() // reverse the array
+
+    const lastDayInCurrentMonth = currentDate.set(
+      'date',
+      currentDate.daysInMonth(),
+    ) // last day in month
+
+    const lastWeekDay = lastDayInCurrentMonth.get('day') // day the last week of the month
+
+    const nextMonthFillArray = Array.from({
+      length: 7 - (lastWeekDay + 1), // create array with length that days next days in next month
+    }).map((_, i) => {
+      return lastDayInCurrentMonth.add(i + 1, 'day') // create array with values of next days
+    })
+
+    const calendarDays = [
+      ...previousMonthsFillArray.map((date) => {
+        return { date, disabled: true }
+      }),
+      ...daysInMonthArray.map((date) => {
+        return { date, disabled: false }
+      }),
+      ...nextMonthFillArray.map((date) => {
+        return { date, disabled: true }
+      }),
+    ] // array with total days in month
+
+    const calendarWeeks = calendarDays.reduce<CalendarWeeks>(
+      (weeks, _, i, original) => {
+        const isNewWeek = i % 7 === 0 // if start new week
+
+        if (isNewWeek) {
+          weeks.push({
+            week: i / 7 + 1,
+            days: original.slice(i, i + 7), // added day in week
+          })
+        }
+
+        return weeks
+      },
+      [],
+    )
+
+    return calendarWeeks
+  }, [currentDate])
+
+```
+
+## Exibição de dias disponíves
+
+Primeiramente vamos precisar de uma rota para buscar os horários disponíveis do usuário e os horários agendados para cada dia específico. Após o clique do usuário em algum dia do calendário, uma busca deve ser realizada no banco de dados para buscar os horário disponíveis.
+
+Primeiro verificar se foi passada uma data pela roda.
+
+```
+const username = String(req.query.username)
+  const { date } = req.query
+
+  if (!date) {
+    return res.status(400).json({ message: 'Date not provided.' })
+  }
+```
+
+Verificar se o usuário existe no banco de dados, passando seu username
+
+```
+const user = await prisma.user.findUnique({
+    where: { username },
+  })
+
+  if (!user) {
+    return res.status(400).json({ message: 'user does not exist.' })
+  }
+```
+
+Caso a data selecionada seja a data anterior a atual, devemos retornar vazio.
+
+```
+const referenceDate = dayjs(String(date))
+  const isPastDate = referenceDate.endOf('day').isBefore(new Date())
+
+  if (isPastDate) {
+    return res.json({ possibleTimes: [], availableTimes: [] })
+  }
+```
+
+Caso seja uma data válida posterior ou igual a data atual, devemos buscar no banco os intervalos de horários disponíveis daquele usuário no dia selecionado. Caso não tenha horários ou registro no banco, retorne vazio.
+
+```
+const userAvailability = await prisma.userTimeInterval.findFirst({
+    where: {
+      user_id: user.id,
+      week_day: referenceDate.get('day'),
+    },
+  })
+
+  if (!userAvailability) {
+    return res.json({ possibleTimes: [], availableTimes: [] })
+  }
+```
+
+Caso existe, transoformando o tempo de minutos para horas, podemos gerar um array da hora inicial para hora final disponível do usuário. O problema é se tiver um horário entre o inicial e final que esteja indisponivel. Para isso, realizamos outra busca no banco na tabela scheduling para buscar os dias agendados do usuário e realizar um cruzamento de dados, filtrando de possibleTimes os horários disponíveis.
+
+```
+const { time_end_in_minutes, time_start_in_minutes } = userAvailability
+
+  const endHour = time_end_in_minutes / 60
+  const startHour = time_start_in_minutes / 60
+
+  const possibleTimes = Array.from({ length: endHour - startHour }).map(
+    (_, i) => {
+      return startHour + i
+    },
+  )
+
+  const blockedTimes = await prisma.scheduling.findMany({
+    select: {
+      date: true,
+    },
+    where: {
+      user_id: user.id,
+      date: {
+        gte: referenceDate.set('hour', startHour).toDate(),
+        lte: referenceDate.set('hour', endHour).toDate(),
+      },
+    },
+  })
+
+  const availableTimes = possibleTimes.filter((time) => {
+    return !blockedTimes.some(
+      (blockedTime) => blockedTime.date.getHours() === time,
+    )
+  })
+
+  return res.json({
+    possibleTimes,
+    availableTimes,
+  })
+```
+
+Com essa rota finalizada, após a seleção de uma data, podemos chamar a rota no componente e mostrar os intervalos de dados disponíveis e indiponíveis.
+
 ## Depedências
 
 - React Hook Form
