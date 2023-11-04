@@ -543,6 +543,94 @@ const { time_end_in_minutes, time_start_in_minutes } = userAvailability
 
 Com essa rota finalizada, após a seleção de uma data, podemos chamar a rota no componente e mostrar os intervalos de dados disponíveis e indiponíveis.
 
+## Utilizando react-query data fetch
+
+instalando o pacote `@tanstack/react-query` como dependência, podemos trabalhar com data fetch cache para as requisições de calendário. Primeiramente, configurando um query client em lib. 
+
+```
+import { QueryClient } from '@tanstack/react-query'
+
+export const queryClient = new QueryClient()
+```
+
+Utilizando o context provider do react query no nosso app.
+
+```
+import '../lib/dayjs'
+
+import type { AppProps } from 'next/app'
+import { globalStyles } from 'styles/global'
+import { SessionProvider } from 'next-auth/react'
+
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from 'lib/react-query'
+
+globalStyles()
+
+function MyApp({ Component, pageProps: { session, ...pageProps } }: AppProps) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider session={session}>
+        <Component {...pageProps} />
+      </SessionProvider>
+    </QueryClientProvider>
+  )
+}
+
+export default MyApp
+```
+
+Agora basta realizar a requisição dentro do componente de CalendarStep. `queryKey` é a chave para identificação da requisição que será preservada em cache, enquanto `queryFn` é a promise de requisição para busca de dados.
+
+```
+const { data: availability } = useQuery<Availability>({
+    queryKey: ['availability', selectecDateWithoutTime],
+    queryFn: async () => {
+      const response = await api.get(`/users/${username}/availability`, {
+        params: {
+          date: selectecDateWithoutTime,
+        },
+      })
+
+      return response.data
+    },
+    enabled: !!selectedDate,
+  })
+```
+
+Podemos usar o generic do typescript para typagem dos dados de retorno.
+
+## Migração database sqlite to mysql
+
+Para realizar a query utilizando query lenguage, alguns métodos não estão disponiveis no sqlite suporte para realizar algumas operações mais complexas envolvedo SQL. Para isso, vamos mudar o banco de dados para MySQL. 
+
+Utilizando uma imagem MySQL no docker, criei um docker compose para subir uma imagem MySQL, utilizando o docker compose.
+
+```yaml
+# Use root/example as user/password credentials
+version: '3.1'
+
+services:
+
+  db:
+    image: mysql:latest
+    # NOTE: use of "mysql_native_password" is not recommended: https://dev.mysql.com/doc/refman/8.0/en/upgrading-from-previous-series.html#upgrade-caching-sha2-password
+    # (this is just an example, not intended to be a production configuration)
+    restart: always
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: docker
+```
+
+Executando `docker compose up` subir uma imagem e um container no docker com banco de dados que vamos utilizar. Em seguida, renomenando a variável de ambientel para:
+
+`DATABASE_URL="mysql://root:docker@localhost:3306/ignite-call-db-1”` 
+
+Deletando a pasta de migrate e rodando novamente as migrate, reconstruimos o banco de dados novamente com as tabelas necessárias.
+
+ 
+
 ## Depedências
 
 - React Hook Form
