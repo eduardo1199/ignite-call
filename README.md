@@ -631,6 +631,128 @@ Deletando a pasta de migrate e rodando novamente as migrate, reconstruimos o ban
 
  
 
+## Criando consultas SQL com prisma
+
+Para consultas no banco de dados que requerem um nível maior de complexidade, nem sempre o ORM irá trazer recursos suficiente para sua consulta, com isso teremos que realizar uma consulta utilizando linguaguem SQL.
+
+O exemplo foi utilizar para buscar os dias bloqueados devido a quantidade de tempo agendado é maior ou igual para o tempo disponível.
+
+```
+const blockedDaysRow: Array<{ date: number }> = await prisma.$queryRaw`
+    SELECT 
+     EXTRACT(DAY FROM S.date) AS date,
+     COUNT(S.date) AS amount,
+     ((UTI.time_end_in_minutes - UTI.time_start_in_minutes) / 60) AS size 
+    FROM scheduling S
+
+    LEFT JOIN user_time_interval UTI
+      ON UTI.week_day = WEEKDAY(DATE_ADD(S.date, INTERVAL 1 DAY))
+
+    WHERE S.user_id = ${user.id}
+      AND DATE_FORMAT(S.date, "%Y-%m") = ${`${year}-${month}`}
+
+    GROUP BY EXTRACT(DAY FROM S.date), 
+      ((UTI.time_end_in_minutes - UTI.time_start_in_minutes) / 60)
+
+    HAVING amount >= size
+  `
+```
+
+## Configurando refresh token google
+
+O problema que temos ate essa parte do código é que o acess_token da google possui um tempo de expiração muito curto para trabalharmos com agendamento no nosso app. Dessa forma, para renovar esse acess_token, podemos utilizar a abordagem do refresh token da google no provider usando o Oauth.
+
+A documentação sugere adicionarmos algumas opções para o primeiro acesso do usuário, o refresh token será salvo no banco de dados após o primeiro login e utilizado para renovar o acess_token
+
+[Google | NextAuth.js](https://next-auth.js.org/providers/google)
+
+```
+authorization: {
+  params: {
+    ...
+    prompt: 'consent',
+    access_type: 'offline',
+    response_type: 'code',
+  },
+},
+```
+
+## Criando método de refresh token da google
+
+Como fizemos no tópico anterior, colocamos as configurações do refresh token da google para retorno, observamos que na nossa tabela de account, o campo refresh token vem preenchido.
+
+Agora precisamos verificar se o token presente na conta já expirou, se não experiou então permanece com as mesmas crendiciais vindas da tabela account.
+
+```
+const account = await prisma.account.findFirstOrThrow({
+    where: {
+      provider: 'google',
+      user_id: userId,
+    },
+  })
+
+  const auth = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+  )
+
+  auth.setCredentials({
+    access_token: account.access_token,
+    refresh_token: account.refresh_token,
+    expiry_date: account.expires_at ? account.expires_at * 1000 : null,
+  })
+
+  if (!account.expires_at) {
+    return auth
+  }
+
+	const isTokenExpired = dayjs(account.expires_at! * 1000).isBefore(new Date())
+
+	....
+	return auth
+```
+
+Caso o token expirou, precisamos chamar o método auth.refreshAcessToken(), ele retorna novas credenciais para uso. Agora, basta preencher as informações novamente das credenciais e atualizar aquela conta especifica do banco de dados.
+
+```
+const isTokenExpired = dayjs(account.expires_at! * 1000).isBefore(new Date())
+
+  if (isTokenExpired) {
+    const { credentials } = await auth.refreshAccessToken()
+
+    const {
+      access_token,
+      refresh_token,
+      expiry_date,
+      id_token,
+      scope,
+      token_type,
+    } = credentials
+
+    await prisma.account.update({
+      data: {
+        access_token,
+        refresh_token,
+        expires_at: expiry_date ? Math.floor(expiry_date / 1000) : null,
+        id_token,
+        scope,
+        token_type,
+      },
+      where: {
+        id: account.id,
+      },
+    })
+
+    auth.setCredentials({
+      access_token,
+      refresh_token,
+      expiry_date,
+    })
+  }
+
+  return auth
+```
+
 ## Depedências
 
 - React Hook Form
